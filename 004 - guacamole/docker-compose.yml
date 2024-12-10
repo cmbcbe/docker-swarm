@@ -1,0 +1,85 @@
+version: "3.8"
+
+services:
+  mariadb:
+    image: linuxserver/mariadb:latest
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == docker02
+    networks:
+      - guacamole
+    volumes:
+      - /data/docker/guacamole/mariadb/data:/config
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MYSQL_ROOT_PASSWORD=MyPWD1234!
+
+  guacd:
+    image: "guacamole/guacd:latest"
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == docker02
+    volumes:
+      - "/data/docker/guacamole/guacd/data:/data"
+      - "/data/docker/guacamole/guacd/conf:/conf:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    networks:
+      - guacamole
+      - internet-access
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  guacamole:
+    image: "guacamole/guacamole:latest"
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == docker02
+    volumes:
+      - "/data/docker/guacamole/guacamole/guac-home:/data"
+      - "/data/docker/guacamole/guacamole/conf:/conf:ro"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    networks:
+      - guacamole
+      - npm
+    environment:
+      - "GUACD_HOSTNAME=guacd"
+      - "GUACD_PORT=4822"
+      - "MYSQL_HOSTNAME=mariadb"
+      - "MYSQL_PORT=3306"
+      - "MYSQL_DATABASE=guacamole"
+      - "MYSQL_USER=guacdb_user"
+      - "MYSQL_PASSWORD=MyPWD1234!"
+      - "GUACAMOLE_HOME=/data"
+      - "EXTENSIONS=auth-totp"
+
+networks:
+  guacamole:
+    driver: overlay
+    internal: true
+    attachable: false
+  internet-access:
+    driver: overlay
+    internal: false
+    attachable: false
+  npm:
+    external: true
