@@ -1,0 +1,88 @@
+version: "3.8"
+services:
+  postgres:
+    # The Postgres Database Service
+    image: postgres:15-bookworm
+    user: 0:0
+    command:
+      - postgres
+      - -c
+      - listen_addresses=*
+    environment:
+      # Username, password and database name variables
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - TZ=Europe/Brussels
+    volumes:
+      - /data/docker/zabbix/postgresql:/var/lib/postgresql/data
+      - /data/docker/zabbix/db_dumps:/dumps
+    networks:
+      - zabbix
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == docker02
+
+  server:
+    image: zabbix/zabbix-server-pgsql:7.0-alpine-latest
+    environment:
+      # The Postgres database value variable
+      POSTGRES_USER: usr_zabbix
+      POSTGRES_PASSWORD: pwd_zabbix
+      DB_SERVER_HOST: zabbix_postgres
+      POSTGRES_DB: db_zabbix
+      ZBX_HISTORYSTORAGETYPES: log,text #Zabbix configuration variables
+      ZBX_DEBUGLEVEL: 1
+      ZBX_HOUSEKEEPINGFREQUENCY: 1
+      ZBX_MAXHOUSEKEEPERDELETE: 5000
+      ZBX_ALLOWUNSUPPORTEDDBVERSIONS: 1
+      TZ: Europe/Brussels
+    depends_on:
+      - zabbix-postgres
+    volumes:
+      - /data/docker/zabbix/server/alertscripts:/usr/lib/zabbix/alertscripts
+    networks:
+      - zabbix
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == docker02
+
+  web:
+    image: zabbix/zabbix-web-nginx-pgsql:7.0-alpine-latest
+    environment:
+      # Postgre database variables
+      DB_SERVER_HOST: zabbix_postgres
+      POSTGRES_USER: usr_zabbix
+      POSTGRES_PASSWORD: pwd_zabbix
+      POSTGRES_DB: db_zabbix
+      ZBX_SERVER_HOST: zabbix_server # Zabbix related and Php variables
+      ZBX_POSTMAXSIZE: 64M
+      PHP_TZ: Europe/Brussels
+      ZBX_MAXEXECUTIONTIME: 500
+    depends_on:
+      - zabbix-postgres
+      - zabbix-server
+    networks:
+      - zabbix
+      - npm
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == docker02
+
+networks:
+  zabbix: {}
+  npm:
+    external: true
