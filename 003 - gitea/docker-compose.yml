@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  server:
+    image: gitea/gitea:latest
+    container_name: gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - TZ=Europe/Brussels
+    deploy:
+      endpoint_mode: dnsrr
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.hostname == docker02
+    volumes:
+      - /data/docker/gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - npm
+
+networks:
+  npm:
+    external: true
