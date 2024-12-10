@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  app:
+    image: 'jc21/nginx-proxy-manager:latest'
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == rproxy02
+      restart_policy:
+        condition: any
+    ports:
+      # ce mode de config sert a ce que les ip des client soient bien les wan et pas la gw docker
+      # - "81:81"
+      #- target: 81
+      #  published: 81
+      #  protocol: tcp
+      #  mode: host
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    networks:
+      - npm
+      # Add any other Stream port you want to expose
+      # - '21:21' # FTP
+      #  admin@example.com
+      # changeme
+    # Uncomment the next line if you uncomment anything in the section
+    #extra_hosts:
+    #  - "host.docker.internal:host-gateway"
+    environment:
+      # Uncomment this if you want to change the location of
+      # the SQLite DB file within the container
+      # DB_SQLITE_FILE: "/data/database.sqlite"
+      - TZ=Europe/Brussels
+      # Uncomment this if IPv6 is not enabled on your host
+      - DISABLE_IPV6='true'
+
+    volumes:
+      - /data/docker/npm/data:/data
+      - /data/docker/npm/letsencrypt:/etc/letsencrypt
+
+networks:
+  npm:
+     external: true
